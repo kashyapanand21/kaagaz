@@ -6,3 +6,8 @@ config.toml
 eval/docs/
 eval/labels.csv
 *.sqlite
+
+# private working notes and scratch output
+KAAGAZ_CONTEXT.md
+design/
+crop_test.jpg

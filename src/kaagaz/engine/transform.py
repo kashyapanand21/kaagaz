@@ -6,6 +6,8 @@ import pymupdf
 from PIL import Image, ImageOps
 from pillow_heif import register_heif_opener
 
+from kaagaz.schemas import RequirementItem
+
 register_heif_opener()  # lets Image.open read iPhone .heic files
 
 DEFAULT_DPI = 300
@@ -26,6 +28,16 @@ def min_bytes_for(kb: int) -> int:
 
 def cm_to_px(cm: float, dpi: int = DEFAULT_DPI) -> int:
     return round(cm / 2.54 * dpi)
+
+
+def target_px(spec: RequirementItem) -> tuple[int, int] | None:
+    """Exact output size the portal wants, from px or cm@DPI. None = no size rule."""
+    if spec.width_px and spec.height_px:
+        return spec.width_px, spec.height_px
+    if spec.width_cm and spec.height_cm:
+        dpi = spec.dpi or DEFAULT_DPI
+        return cm_to_px(spec.width_cm, dpi), cm_to_px(spec.height_cm, dpi)
+    return None
 
 def to_rgb(img: Image.Image) -> Image.Image:
     if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):

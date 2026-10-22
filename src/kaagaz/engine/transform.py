@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 from pathlib import Path
-
+import pymupdf
 from PIL import Image, ImageOps
 from pillow_heif import register_heif_opener
 
@@ -91,3 +91,65 @@ def fit_jpeg(img: Image.Image, max_bytes: int | None = None, min_bytes: int | No
         if max_bytes is None or len(bigger) <= max_bytes:
             data = bigger
     return data
+
+A4 = pymupdf.paper_rect("a4")
+MARGIN_PT = 24
+PDF_DPI_LADDER = (200, 150, 120, 100, 85, 72)
+
+
+def image_to_pdf(img: Image.Image) -> bytes:
+    doc = pymupdf.open()
+    page = doc.new_page(width=A4.width, height=A4.height)
+    box = A4 + (MARGIN_PT, MARGIN_PT, -MARGIN_PT, -MARGIN_PT)
+    page.insert_image(box, stream=encode_jpeg(img, 90), keep_proportion=True)
+    return doc.tobytes(garbage=4, deflate=True)
+
+
+def merge_pdfs(parts: list[bytes]) -> bytes:
+    out = pymupdf.open()
+    for part in parts:
+        with pymupdf.open(stream=part, filetype="pdf") as src:
+            out.insert_pdf(src)
+    return out.tobytes(garbage=4, deflate=True)
+
+
+def first_page_only(pdf: bytes) -> bytes:
+    with pymupdf.open(stream=pdf, filetype="pdf") as doc:
+        doc.select([0])
+        return doc.tobytes(garbage=4, deflate=True)
+
+
+def pdf_page_image(pdf: bytes, dpi: int = 150, page_no: int = 0) -> Image.Image:
+    with pymupdf.open(stream=pdf, filetype="pdf") as doc:
+        pix = doc[page_no].get_pixmap(dpi=dpi, alpha=False)
+        return Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+
+def _rasterise(doc: pymupdf.Document, dpi: int, page_budget: int) -> bytes | None:
+    out = pymupdf.open()
+    for page in doc:
+        pix = page.get_pixmap(dpi=dpi, alpha=False)
+        img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+        jpg = _best_under(img, page_budget)
+        if jpg is None:
+            return None
+        new = out.new_page(width=page.rect.width, height=page.rect.height)
+        new.insert_image(new.rect, stream=jpg)
+    return out.tobytes(garbage=4, deflate=True)
+
+
+def fit_pdf(pdf: bytes, max_bytes: int | None) -> tuple[bytes, int | None]:
+    """Returns (pdf_bytes, raster_dpi). raster_dpi is None if the lossless pass was enough."""
+    with pymupdf.open(stream=pdf, filetype="pdf") as doc:
+        lossless = doc.tobytes(garbage=4, deflate=True, clean=True)
+        if max_bytes is None or len(lossless) <= max_bytes:
+            return lossless, None
+
+        budget = int(max_bytes * 0.97) // doc.page_count
+        for dpi in PDF_DPI_LADDER:
+            data = _rasterise(doc, dpi, budget)
+            if data and len(data) <= max_bytes:
+                return data, dpi
+
+        raise CannotFit(f"{doc.page_count}-page PDF can't reach {max_bytes // 1000} KB "
+                        f"even at {PDF_DPI_LADDER[-1]} DPI; needs fewer pages or a higher limit")
+

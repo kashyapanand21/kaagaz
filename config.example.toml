@@ -1,0 +1,18 @@
+folders = [
+  'C:\Users\YOU\Downloads',
+  'C:\Users\YOU\Documents',
+]
+
+[models]
+vision = "gemma4:e4b"
+# escalation = "gemma4:12b"   # uncomment only after the VRAM test
+host = "http://127.0.0.1:11434"
+
+[thresholds]
+escalate_below = 0.75
+review_below = 0.60
+image_long_side = 1024
+
+[profile]
+name = "Specimen Student"
+roll = "12345"

@@ -11,6 +11,7 @@ from PIL import Image
 from kaagaz.ai.client import chat_json
 from kaagaz.ai.scrub import scrub, scrub_model
 from kaagaz.config import Settings
+from kaagaz.dates import parse_printed_date
 from kaagaz.engine.inkcheck import looks_like_signature
 from kaagaz.engine.render import RenderError, render
 from kaagaz.schemas import DocType, Extraction
@@ -32,7 +33,9 @@ Choose doc_type from the allowed list. Cues:
 - thumb_impression: a fingerprint mark.
 - Use "other" only if nothing fits.
 Rules:
-- issue_date and valid_until: ONLY if printed on the document. Never guess or calculate.
+- person_name: the name of the person the document is about (student, applicant, account holder).
+- issue_date and valid_until: copy the date EXACTLY as printed, in its original format.
+  Use null if it is not printed. Never guess or calculate a date.
 - year: the passing or issue year printed on the document.
 - id_last4: only the LAST 4 digits of an ID number. Never write a full ID, account or PAN number
   anywhere, including the summary.
@@ -110,12 +113,16 @@ def classify_one(conn: sqlite3.Connection, row: sqlite3.Row, s: Settings) -> Out
         e = e.model_copy(update={"doc_type": DocType.SIGNATURE, "confidence": 0.0})  # code's suggestion, not the model's
         status, note = "needs_review", "looks like a signature (ink on plain paper); please confirm"
 
+    issued = parse_printed_date(e.issue_date)                 # the model copies; code converts
+    valid = parse_printed_date(e.valid_until)
+    year = e.year or (issued.year if issued else None)
+
     _save(conn, row["id"], status=status, error=note,
           raw=scrub(info.raw) if status != "indexed" else None,
           doc_type=e.doc_type.value, confidence=e.confidence, person_name=e.person_name,
-          issuer=e.issuer, year=e.year, language=e.language, summary=e.summary, id_last4=e.id_last4,
-          issue_date=e.issue_date.isoformat() if e.issue_date else None,
-          valid_until=e.valid_until.isoformat() if e.valid_until else None, **common)
+          issuer=e.issuer, year=year, language=e.language, summary=e.summary, id_last4=e.id_last4,
+          issue_date=issued.isoformat() if issued else None,
+          valid_until=valid.isoformat() if valid else None, **common)
     return Outcome(status, e.doc_type.value, e.confidence, info.seconds, note)
 
 

@@ -5,8 +5,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
-
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 class DocType(StrEnum):
     # identity
@@ -48,13 +47,17 @@ class DocType(StrEnum):
 IMAGE_ONLY_TYPES = frozenset({DocType.PHOTO, DocType.SIGNATURE, DocType.THUMB_IMPRESSION})
 
 class Extraction(BaseModel):
+    # Every key is REQUIRED in the schema sent to Ollama (null still allowed): with optional keys
+    # the model skipped person_name, year and dates on every document. Python defaults stay for tests.
+    model_config = ConfigDict(json_schema_extra=lambda s, _: s.update(required=list(s["properties"])))
+
     doc_type: DocType
     confidence: float = Field(ge=0, le=1, description="Your confidence in doc_type, from 0 to 1")
-    person_name: str | None = Field(None, description="Name of the person the document belongs to, exactly as printed")
+    person_name: str | None = Field(None, description="Full name of the person the document belongs to, exactly as printed")
     issuer: str | None = Field(None, description="Issuing board, office or institution, as printed")
-    year: int | None = Field(None, ge=1950, le=2100, description="Passing or issue year, as printed")
-    issue_date: date | None = Field(None, description="Issue date ONLY if printed on the document, else null. Never guess.")
-    valid_until: date | None = Field(None, description="Expiry date ONLY if printed on the document, else null. Never guess.")
+    year: int | None = Field(None, description="Passing or issue year as printed, 4 digits")
+    issue_date: str | None = Field(None, description="Issue date copied EXACTLY as printed (e.g. 05/08/2025 or 5 August 2025), or null if not printed")
+    valid_until: str | None = Field(None, description="Expiry / 'valid up to' date copied EXACTLY as printed, or null if not printed")
     id_last4: str | None = Field(None, description="ONLY the last 4 digits of any ID number. Never the full number.")
     language: str = Field("en", description="Main language code, e.g. en, hi")
     summary: str = Field(description="One short line describing the document, used for search")
@@ -66,6 +69,23 @@ class Extraction(BaseModel):
             return None
         digits = re.sub(r"\D", "", str(v))
         return digits[-4:] if len(digits) >= 4 else None
+
+    @field_validator("year", mode="before")
+    @classmethod
+    def _plausible_year(cls, v: object) -> int | None:
+        try:
+            year = int(v)
+        except (TypeError, ValueError):
+            return None
+        return year if 1950 <= year <= 2100 else None       # repair, don't reject the whole result
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def _clamp(cls, v: object) -> float:
+        try:
+            return min(max(float(v), 0.0), 1.0)
+        except (TypeError, ValueError):
+            return 0.0
 
 
 Format = Literal["pdf", "jpg", "png"]

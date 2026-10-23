@@ -72,6 +72,39 @@ def scan() -> None:
 
 
 @app.command()
+def classify(limit: int = typer.Option(0, help="Stop after N documents (0 = all)."),
+             redo: bool = typer.Option(False, help="Re-label everything, e.g. after changing image size.")) -> None:
+    """Label pending documents with Gemma (~6-7 s each). Safe to stop and resume."""
+    from kaagaz.ai.classify import classify_pending, reset_all
+    from kaagaz.ai.client import OllamaUnavailable
+    from kaagaz.db import connect, counts
+
+    s = get_settings()
+    with closing(connect(s.db_path)) as conn:
+        if redo:
+            typer.echo(f"reset {reset_all(conn)} documents to pending")
+        total = counts(conn).get("pending", 0)
+        total = min(total, limit) if limit else total
+        times: list[float] = []
+        try:
+            for i, (row, out) in enumerate(classify_pending(conn, s, limit or None), 1):
+                if out.seconds:
+                    times.append(out.seconds)
+                label = f"{out.doc_type} ({out.confidence:.2f})" if out.doc_type else "-"
+                note = f"  [{out.note}]" if out.note else ""
+                typer.echo(f"[{i}/{total}] {Path(row['path']).name[:38]:<38} {label:<30} "
+                           f"{out.seconds:5.1f}s  {out.status}{note}")
+        except OllamaUnavailable as e:
+            typer.echo(f"PAUSED  {e} (remaining documents stay pending)")
+        except KeyboardInterrupt:
+            typer.echo("stopped; remaining documents stay pending")
+        if times:
+            t = sorted(times)
+            typer.echo(f"latency p50 {t[len(t) // 2]:.1f}s, p95 {t[min(len(t) - 1, int(len(t) * 0.95))]:.1f}s, n={len(t)}")
+        typer.echo(f"library: {counts(conn)}")
+
+
+@app.command()
 def parse(path: Path) -> None:
     """Parse a portal's upload instructions (text file) into a checklist."""
     from kaagaz.ai.requirements import parse_requirements

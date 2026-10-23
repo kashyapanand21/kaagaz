@@ -20,8 +20,13 @@ def whiten_signature(img: Image.Image) -> Image.Image:
 
 
 def background_is_light(img: Image.Image) -> bool:
-    """Is the outer 5% border light and even (a white-ish photo background)?"""
+    """Is the background around the head light and even?
+
+    Checks the top strip and the upper halves of the side strips, never the bottom:
+    shoulders and clothes always reach the bottom edge of a passport photo."""
     g = np.asarray(img.convert("L"), dtype=np.float32)
-    k = max(2, int(min(g.shape) * 0.05))
-    border = np.concatenate([g[:k].ravel(), g[-k:].ravel(), g[:, :k].ravel(), g[:, -k:].ravel()])
+    h, w = g.shape
+    k = max(2, int(min(h, w) * 0.05))
+    upper = h // 2
+    border = np.concatenate([g[:k].ravel(), g[:upper, :k].ravel(), g[:upper, -k:].ravel()])
     return border.mean() > 200 and border.std() < 30

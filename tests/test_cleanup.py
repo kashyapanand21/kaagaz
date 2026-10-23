@@ -17,3 +17,10 @@ def test_whiten_makes_paper_pure_white_and_crops_to_ink():
 def test_background_check():
     assert background_is_light(Image.new("RGB", (300, 400), "white"))
     assert not background_is_light(Image.new("RGB", (300, 400), (40, 80, 160)))
+
+
+
+def test_clothes_at_the_bottom_do_not_fail_a_white_background():
+    img = Image.new("RGB", (413, 531), "white")
+    ImageDraw.Draw(img).rectangle([0, 380, 413, 531], fill=(30, 30, 80))     # shoulders and clothes
+    assert background_is_light(img)

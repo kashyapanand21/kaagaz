@@ -1,3 +1,4 @@
+from contextlib import closing
 from pathlib import Path
 
 import typer
@@ -47,6 +48,27 @@ def doctor() -> None:
     status = "OK  " if result and result.ok else f"FAIL ({info.error})"
     typer.echo(f"{status}  {info.model}: JSON round-trip in {info.seconds:.1f}s, "
                f"{info.output_tokens} output tokens")
+
+
+@app.command()
+def scan() -> None:
+    """Find documents in your folders and register new ones (fast; no AI yet)."""
+    from kaagaz.db import connect, counts
+    from kaagaz.scan import scan as run_scan
+
+    s = get_settings()
+    with closing(connect(s.db_path)) as conn:
+        rep = run_scan(conn, s)
+        typer.echo(f"seen {rep.seen}: {rep.new} new, {rep.unchanged} unchanged, "
+                   f"{rep.moved} moved, {rep.duplicate} duplicate copies")
+        if rep.cloud_only:
+            typer.echo(f"skipped {rep.cloud_only} OneDrive online-only files "
+                       f"(right-click > Always keep on this device to include them)")
+        for f in rep.missing_folders:
+            typer.echo(f"WARN  folder not found: {f}")
+        for e in rep.errors:
+            typer.echo(f"WARN  {e}")
+        typer.echo(f"library: {counts(conn)}")
 
 
 @app.command()

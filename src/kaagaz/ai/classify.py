@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import io
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
 
+from PIL import Image
+
 from kaagaz.ai.client import chat_json
 from kaagaz.ai.scrub import scrub, scrub_model
 from kaagaz.config import Settings
+from kaagaz.engine.inkcheck import looks_like_signature
 from kaagaz.engine.render import RenderError, render
 from kaagaz.schemas import DocType, Extraction
 
@@ -22,8 +26,10 @@ Choose doc_type from the allowed list. Cues:
 - income_certificate: आय प्रमाण पत्र. caste_certificate: जाति प्रमाण पत्र.
   domicile_certificate: निवास / residence certificate. ews_certificate: Economically Weaker Section.
 - bank_passbook: the account-holder page of a passbook. cancelled_cheque: a cheque marked CANCELLED.
-- photo: one person's face on a plain background, nothing else. signature: only handwritten ink
-  strokes on a plain background. thumb_impression: a fingerprint mark.
+- photo: one person's face on a plain background, nothing else.
+- signature: handwritten ink strokes (a name in cursive) on plain paper, with no printed text.
+  It is often small, faint, or photographed at an angle. Never call a signature "other".
+- thumb_impression: a fingerprint mark.
 - Use "other" only if nothing fits.
 Rules:
 - issue_date and valid_until: ONLY if printed on the document. Never guess or calculate.
@@ -59,6 +65,7 @@ def decide(e: Extraction, text: str, threshold: float) -> tuple[str, str | None]
     if said and said is not e.doc_type:
         return "needs_review", f"PDF text suggests {said.value}"
     return "indexed", None
+
 
 @dataclass
 class Outcome:
@@ -99,6 +106,10 @@ def classify_one(conn: sqlite3.Connection, row: sqlite3.Row, s: Settings) -> Out
 
     e = scrub_model(result)
     status, note = decide(e, r.text, s.thresholds.escalate_below)
+    if e.doc_type is DocType.OTHER and looks_like_signature(Image.open(io.BytesIO(r.images[0]))):
+        e = e.model_copy(update={"doc_type": DocType.SIGNATURE, "confidence": 0.0})  # code's suggestion, not the model's
+        status, note = "needs_review", "looks like a signature (ink on plain paper); please confirm"
+
     _save(conn, row["id"], status=status, error=note,
           raw=scrub(info.raw) if status != "indexed" else None,
           doc_type=e.doc_type.value, confidence=e.confidence, person_name=e.person_name,

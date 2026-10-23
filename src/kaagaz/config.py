@@ -19,6 +19,8 @@ class Models(BaseModel):
     vision: str = "gemma4:e4b"
     escalation: str | None = None      # set only after the VRAM test proves 12B fits
     embed: str | None = None           # P1: embeddings
+    keep_alive: str = "15m"            # keep the model loaded between files (cold load ≈ 14 s)
+    num_ctx: int = 8192                # the 32k default wastes VRAM on a 6 GB card
     host: str = "http://127.0.0.1:11434"
 
     @field_validator("host")

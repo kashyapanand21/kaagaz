@@ -1,0 +1,12 @@
+DOCUMENTS TO BE UPLOADED (Specimen Scholarship Portal 2026-27)
+
+1. Recent passport size photograph with white background, size 3.5 cm x 4.5 cm,
+   in JPG/JPEG format, file size between 20 KB and 50 KB.
+2. Scanned signature in JPG format, file size 10 KB to 20 KB.
+3. Class 12 marksheet in PDF format, maximum 200 KB. Upload front and back in a single file.
+4. Income certificate issued on or after 01-04-2026, PDF only, not more than 0.3 MB.
+5. First page of bank passbook showing account holder name and IFSC, PDF, up to 1 MB.
+6. Caste certificate (if applicable), PDF, maximum 300 KB.
+
+Enter your Aadhaar number in the form; do not upload the Aadhaar card.
+File names must be in the format RollNumber_DocumentName.

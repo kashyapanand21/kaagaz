@@ -1,7 +1,5 @@
 # Kaagaz 📄🦥
 
-# Kaagaz 📄🦥
-
 **Your documents, ready for any form. Offline.**
 
 Every scholarship, admission and exam portal in India wants the same documents in a different

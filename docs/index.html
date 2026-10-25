@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Kaagaz — Local, Offline AI Document Assistant</title>
+    <meta
+        content="Kaagaz is an open-source, offline AI document assistant for Indian forms. Re-opens and measures every document against portal rules with Gemma 4 E4B on your local GPU."
+        name="description" />
+    <style>
+        /* CSS Variables matching Kaagaz Visual Direction */
+        :root {
+            --ink-teal: #0F4C5C;
+            --ink-teal-dark: #0A3642;
+            --ink-teal-tint: #E3EFF1;
+            --marigold: #F2A541;
+            --marigold-dark: #D98A1F;
+            --paper-cream: #FBF6EC;
+            --card-white: #FFFDF8;
+            --text-main: #1E2A2F;
+            --text-muted: #5B6B70;
+            --border-color: #E6DFD0;
+            --status-pass: #2E8B57;
+            --status-warn: #B7791F;
+            --status-fail: #C0392B;
+            --status-pass-bg: #EAF5EE;
+            --status-warn-bg: #FAF2E6;
+            --status-fail-bg: #FBEBEB;
+            --font-serif: Georgia, 'Times New Roman', serif;
+            --font-sans: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            --font-mono: Consolas, 'Courier New', monospace;
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 18px;
+            --shadow-raised: 0 2px 4px rgba(15, 76, 92, 0.04), 0 8px 18px rgba(15, 76, 92, 0.07), 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+            --shadow-hover: 0 4px 8px rgba(15, 76, 92, 0.06), 0 14px 28px rgba(15, 76, 92, 0.11), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+            --shadow-pressed: 0 1px 2px rgba(15, 76, 92, 0.12);
+        }
+
+        /* Reset and Global Styles */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 80px;
+        }
+
+        body {
+            background-color: var(--paper-cream);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            font-size: 16px;
+            line-height: 1.6;
+            min-width: 360px;
+            -webkit-font-smoothing: antialiased;
+            position: relative;
+        }
+
+        /* Tactile Paper Texture */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.025;
+            background-image: radial-gradient(var(--text-main) 1px, transparent 0);
+            background-size: 8px 8px;
+            z-index: 999;
+        }
+
+        /* Accessible Focus States */
+        :focus-visible {
+            outline: 3px solid var(--marigold);
+            outline-offset: 2px;
+        }
+
+        a {
+            color: var(--ink-teal);
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            transition: color 0.15s ease;
+        }
+
+        a:hover {
+            color: var(--ink-teal-dark);
+        }
+
+        /* Typography */
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: var(--font-serif);
+            color: var(--ink-teal);
+            line-height: 1.25;
+            font-weight: 700;
+        }
+
+        h1 {
+            font-size: clamp(2.4rem, 5vw, 3.4rem);
+            letter-spacing: -0.02em;
+        }
+
+        h2 {
+            font-size: clamp(1.8rem, 3.5vw, 2.3rem);
+            margin-bottom: 0.75rem;
+        }
+
+        h3 {
+            font-size: 1.35rem;
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            margin-bottom: 1rem;
+        }
+
+        code,
+        pre {
+            font-family: var(--font-mono);
+        }
+
+        /* Soft 3D Raised Card Pattern */
+        .card {
+            background-color: var(--card-white);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.75rem;
+            box-shadow: var(--shadow-raised);
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .card--teal {
+            background-color: var(--ink-teal);
+            color: #FFFDF8;
+            border-color: var(--ink-teal-dark);
+        }
+
+        .card--teal h2,
+        .card--teal h3,
+        .card--teal h4 {
+            color: #FFFDF8;
+        }
+
+        .card--teal p,
+        .card--teal li {
+            color: #D6E7EB;
+        }
+
+        .card--highlight {
+            border-top: 4px solid var(--marigold);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-family: var(--font-sans);
+            font-size: 0.95rem;
+            font-weight: 600;
+            padding: 0.75rem 1.4rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid transparent;
+            text-decoration: none;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(15, 76, 92, 0.15), 0 1px 0 rgba(255, 255, 255, 0.3) inset;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+
+        .btn:active {
+            transform: translateY(2px);
+            box-shadow: var(--shadow-pressed);
+        }
+
+        .btn--primary {
+            background-color: var(--ink-teal);
+            color: #FFFDF8;
+            border-color: var(--ink-teal-dark);
+        }
+
+        .btn--primary:hover {
+            background-color: var(--ink-teal-dark);
+            color: #FFFFFF;
+        }
+
+        .btn--accent {
+            background-color: var(--marigold);
+            color: #1E2A2F;
+            border-color: var(--marigold-dark);
+        }
+
+        .btn--accent:hover {
+            background-color: var(--marigold-dark);
+        }
+
+        .btn--secondary {
+            background-color: var(--card-white);
+            color: var(--ink-teal);
+            border-color: var(--border-color);
+        }
+
+        .btn--secondary:hover {
+            background-color: var(--ink-teal-tint);
+            border-color: var(--ink-teal);
+        }
+
+        .btn--small {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.82rem;
+        }
+
+        /* Status Pills */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.25rem 0.65rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .status-badge--pass {
+            background-color: var(--status-pass-bg);
+            color: var(--status-pass);
+            border: 1px solid rgba(46, 139, 87, 0.3);
+        }
+
+        .status-badge--warn {
+            background-color: var(--status-warn-bg);
+            color: var(--status-warn);
+            border: 1px solid rgba(183, 121, 31, 0.3);
+        }
+
+        .status-badge--fail {
+            background-color: var(--status-fail-bg);
+            color: var(--status-fail);
+            border: 1px solid rgba(192, 57, 43, 0.3);
+        }
+
+        /* Chips */
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: var(--ink-teal-tint);
+            color: var(--ink-teal-dark);
+            padding: 0.3rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid rgba(15, 76, 92, 0.12);
+        }
+
+        /* Layout Containers */
+        .container {
+            width: 100%;
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 1.25rem;
+        }
+
+        section {
+            padding: 4.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        section:last-of-type {
+            border-bottom: none;
+        }
+
+        .section-header {
+            margin-bottom: 2.25rem;
+            max-width: 760px;
+        }
+
+        .section-eyebrow {
+            display: inline-block;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 700;
+            color: var(--marigold-dark);
+            margin-bottom: 0.4rem;
+        }
+
+        /* Sticky Navigation */
+        .navbar {
+            position: sticky;
+            top: 0;
+            background: rgba(251, 246, 236, 0.95);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 100;
+            box-shadow: 0 1px 4px rgba(15, 76, 92, 0.05);
+        }
+
+        .navbar__inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 68px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            text-decoration: none;
+            color: var(--ink-teal);
+            font-weight: 700;
+            font-size: 1.4rem;
+            font-family: var(--font-serif);
+        }
+
+        .brand svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            list-style: none;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 600;
+            padding: 0.4rem 0.75rem;
+            border-radius: var(--radius-sm);
+            white-space: nowrap;
+            transition: all 0.15s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--ink-teal);
+            background: var(--ink-teal-tint);
+        }
+
+        .nav-links a.active {
+            color: var(--ink-teal);
+            background: #EAF0E6;
+            border-bottom: 2px solid var(--marigold);
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        }
+
+        /* 1. HERO SECTION */
+        .hero {
+            padding: 4.5rem 0 3.5rem;
+            background: linear-gradient(180deg, rgba(227, 239, 241, 0.45) 0%, rgba(251, 246, 236, 0) 100%);
+        }
+
+        .hero__grid {
+            display: grid;
+            grid-template-columns: 1.25fr 0.75fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .hero__chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero__tagline {
+            font-family: var(--font-serif);
+            font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+            color: var(--ink-teal-dark);
+            font-weight: 400;
+            font-style: italic;
+            margin-bottom: 1.25rem;
+        }
+
+        .hero__desc {
+            font-size: 1.1rem;
+            color: var(--text-main);
+            max-width: 620px;
+            margin-bottom: 2rem;
+        }
+
+        .hero__actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero__mascot-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2.25rem;
+            background: var(--card-white);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-raised);
+        }
+
+        .hero__mascot-caption {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+            font-style: italic;
+        }
+
+        /* 2. DEMO SECTION */
+        .demo-frame-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%;
+            /* 16:9 Aspect Ratio */
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: #0A3642;
+            box-shadow: 0 4px 12px rgba(15, 76, 92, 0.2);
+            border: 1px solid var(--ink-teal-dark);
+            margin-bottom: 2.5rem;
+        }
+
+        .demo-frame-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        .screenshots-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.25rem;
+        }
+
+        .screenshot-card {
+            background: var(--card-white);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 0.75rem;
+            box-shadow: var(--shadow-raised);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screenshot-card img {
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background-color: var(--ink-teal-tint);
+        }
+
+        .screenshot-caption {
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            font-weight: 600;
+            line-height: 1.4;
+        }
+
+        .screenshot-caption small {
+            display: block;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-top: 0.2rem;
+        }
+
+        /* 3. THE PROBLEM SECTION */
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .problem-card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .problem-rule {
+            background: var(--ink-teal-tint);
+            border-left: 3px solid var(--marigold);
+            padding: 0.65rem 0.85rem;
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--ink-teal-dark);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .pain-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            color: var(--status-fail);
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* 4. HOW IT WORKS SECTION */
+        .steps-flow {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+            margin-bottom: 2.5rem;
+            position: relative;
+        }
+
+        .step-card {
+            background: var(--card-white);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.25rem 1rem;
+            box-shadow: var(--shadow-raised);
+            position: relative;
+        }
+
+        .step-num {
+            width: 32px;
+            height: 32px;
+            background: var(--ink-teal);
+            color: #FFFDF8;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 0.75rem;
+            border: 2px solid var(--marigold);
+        }
+
+        .step-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .step-card p {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            margin-bottom: 0;
+            line-height: 1.45;
+        }
+
+        .principle-banner {
+            background: var(--card-white);
+            border: 2px solid var(--marigold);
+            border-radius: var(--radius-lg);
+            padding: 1.75rem 2rem;
+            box-shadow: var(--shadow-raised);
+            text-align: center;
+            max-width: 820px;
+            margin: 0 auto;
+        }
+
+        .principle-text {
+            font-family: var(--font-serif);
+            font-size: 1.45rem;
+            color: var(--ink-teal-dark);
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin-bottom: 0.5rem;
+        }
+
+        .principle-sub {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 0;
+        }
+
+        /* 5. MEASURED, NOT CLAIMED TABLE */
+        .table-container {
+            overflow-x: auto;
+            background: var(--card-white);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-raised);
+            margin-bottom: 1.5rem;
+        }
+
+        .measured-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+
+        .measured-table th,
+        .measured-table td {
+            padding: 1.1rem 1.4rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .measured-table th {
+            background-color: var(--ink-teal-tint);
+            color: var(--ink-teal-dark);
+            font-weight: 700;
+            font-family: var(--font-sans);
+            font-size: 0.88rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .measured-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .measured-table tr:hover td {
+            background-color: #F8F5EE;
+        }
+
+        .metric-value {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            color: var(--ink-teal-dark);
+            font-size: 0.95rem;
+        }
+
+        .honesty-note {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* 6. PRIVACY CARD */
+        .privacy-card {
+            background-color: var(--ink-teal);
+            color: #FFFDF8;
+            border-radius: var(--radius-lg);
+            padding: 2.5rem;
+            border: 1px solid var(--ink-teal-dark);
+            box-shadow: var(--shadow-hover);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .privacy-card::after {
+            content: "";
+            position: absolute;
+            right: -20px;
+            bottom: -20px;
+            width: 180px;
+            height: 180px;
+            background: radial-gradient(circle, rgba(242, 165, 65, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .privacy-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 1.5rem;
+        }
+
+        .privacy-point {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .privacy-point svg {
+            flex-shrink: 0;
+            margin-top: 0.2rem;
+        }
+
+        .privacy-point h4 {
+            color: #FFFDF8;
+            font-size: 1.05rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .privacy-point p {
+            color: #D6E7EB;
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+
+        /* 7. SET IT UP SECTION */
+        .setup-grid {
+            display: grid;
+            grid-template-columns: 0.85fr 1.15fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .req-list {
+            list-style: none;
+            margin-top: 1rem;
+        }
+
+        .req-list li {
+            padding: 0.65rem 0;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.95rem;
+        }
+
+        .req-list li:last-child {
+            border-bottom: none;
+        }
+
+        .code-step {
+            background: var(--card-white);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+            box-shadow: var(--shadow-raised);
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.65rem;
+        }
+
+        .code-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--ink-teal);
+        }
+
+        .copy-btn {
+            background: var(--ink-teal-tint);
+            color: var(--ink-teal-dark);
+            border: 1px solid rgba(15, 76, 92, 0.2);
+            border-radius: var(--radius-sm);
+            padding: 0.25rem 0.65rem;
+            font-size: 0.78rem;
+            font-family: var(--font-sans);
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            transition: all 0.15s ease;
+        }
+
+        .copy-btn:hover {
+            background: var(--marigold);
+            color: #1E2A2F;
+            border-color: var(--marigold-dark);
+        }
+
+        .copy-btn.copied {
+            background: var(--status-pass-bg);
+            color: var(--status-pass);
+            border-color: var(--status-pass);
+        }
+
+        .code-box {
+            background: #0A3642;
+            color: #FBF6EC;
+            padding: 0.85rem 1.1rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            overflow-x: auto;
+            line-height: 1.45;
+        }
+
+        .tip-callout {
+            background: #FAF2E6;
+            border-left: 4px solid var(--marigold);
+            padding: 0.9rem 1.2rem;
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            margin-top: 1.5rem;
+            font-weight: 500;
+        }
+
+        /* 8. HOW TO USE SECTION */
+        .guide-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .guide-card {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .guide-badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--marigold-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .cli-box {
+            background: var(--card-white);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-raised);
+            overflow: hidden;
+        }
+
+        .cli-box summary {
+            padding: 1.2rem 1.5rem;
+            font-weight: 700;
+            font-family: var(--font-serif);
+            font-size: 1.15rem;
+            color: var(--ink-teal);
+            cursor: pointer;
+            background: var(--ink-teal-tint);
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .cli-content {
+            padding: 1.5rem;
+        }
+
+        /* 9. TROUBLESHOOTING & 11. FAQ ACCORDION */
+        .accordion-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        details.acc-item {
+            background: var(--card-white);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-raised);
+            transition: all 0.2s ease;
+        }
+
+        details.acc-item[open] {
+            border-color: var(--ink-teal);
+        }
+
+        details.acc-item summary {
+            padding: 1.2rem 1.4rem;
+            font-weight: 600;
+            font-size: 1.05rem;
+            color: var(--ink-teal-dark);
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        details.acc-item summary::-webkit-details-marker {
+            display: none;
+        }
+
+        details.acc-item summary::after {
+            content: "+";
+            font-size: 1.4rem;
+            font-weight: 400;
+            color: var(--marigold-dark);
+            transition: transform 0.2s ease;
+        }
+
+        details.acc-item[open] summary::after {
+            content: "−";
+        }
+
+        .acc-body {
+            padding: 0 1.4rem 1.4rem;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            border-top: 1px solid var(--ink-teal-tint);
+            margin-top: 0.5rem;
+            padding-top: 1rem;
+        }
+
+        /* 10. LIMITATIONS & NEXT */
+        .limitations-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .limitation-item {
+            display: flex;
+            gap: 0.85rem;
+            align-items: flex-start;
+        }
+
+        .limitation-icon {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            color: var(--marigold-dark);
+            margin-top: 0.15rem;
+        }
+
+        /* 12. FOOTER */
+        footer {
+            background-color: var(--ink-teal-dark);
+            color: #FFFDF8;
+            padding: 4rem 0 2.5rem;
+            border-top: 4px solid var(--marigold);
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 3rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .footer-brand {
+            font-family: var(--font-serif);
+            font-size: 1.5rem;
+            color: #FFFDF8;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .credits-tag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .credit-tag {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.2rem 0.6rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            color: #D6E7EB;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            padding-top: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: #A4C1C8;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        /* Responsive Queries */
+        @media (max-width: 1024px) {
+            .hero__grid {
+                grid-template-columns: 1fr;
+            }
+
+            .steps-flow {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .screenshots-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .guide-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            section {
+                padding: 3.5rem 0;
+            }
+
+            .navbar__inner {
+                height: auto;
+                padding: 0.75rem 0;
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .navbar__inner>nav {
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .nav-links {
+                width: 100%;
+                justify-content: flex-start;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                scrollbar-width: none;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .nav-links li {
+                flex: 0 0 auto;
+            }
+
+            .measured-table th,
+            .measured-table td {
+                padding-left: .6rem;
+                padding-right: .6rem;
+            }
+
+            .problem-grid,
+            .guide-grid,
+            .steps-flow,
+            .privacy-grid,
+            .setup-grid,
+            .limitations-grid,
+            .footer-content {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .screenshots-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Long code lines scroll inside their box instead of widening the page */
+        .setup-grid>*,
+        .guide-grid>*,
+        .problem-grid>* {
+            min-width: 0;
+        }
+
+        pre,
+        .code-box {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sticky Top Navigation -->
+    <header class="navbar" id="top-nav">
+        <div class="container navbar__inner">
+            <a aria-label="Kaagaz Home" class="brand" href="#hero">
+                <!-- Sloth Minimal Vector Logo -->
+                <svg aria-hidden="true" fill="none" viewbox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="18" cy="18" fill="#0F4C5C" r="17"></circle>
+                    <path d="M10 24C10 20 13 14 18 14C23 14 26 20 26 24" stroke="#FBF6EC" stroke-linecap="round"
+                        stroke-width="2.5"></path>
+                    <ellipse cx="18" cy="19" fill="#FFFDF8" rx="6" ry="4.5"></ellipse>
+                    <ellipse cx="15.5" cy="18.5" fill="#0A3642" rx="1.5" ry="2"></ellipse>
+                    <ellipse cx="20.5" cy="18.5" fill="#0A3642" rx="1.5" ry="2"></ellipse>
+                    <path d="M17 21C17.5 21.5 18.5 21.5 19 21" stroke="#F2A541" stroke-linecap="round"
+                        stroke-width="1.5"></path>
+                    <rect fill="#F2A541" height="4" rx="2" width="20" x="8" y="24"></rect>
+                </svg>
+                <span>Kaagaz</span>
+            </a>
+            <nav aria-label="Main Navigation">
+                <ul class="nav-links">
+                    <li><a href="#demo">Demo</a></li>
+                    <li><a href="#the-problem">The Problem</a></li>
+                    <li><a href="#how-it-works">How It Works</a></li>
+                    <li><a href="#measured">Results</a></li>
+                    <li><a href="#privacy">Privacy</a></li>
+                    <li><a href="#setup">Set It Up</a></li>
+                    <li><a href="#guide">Guide</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <!-- 1. HERO SECTION -->
+    <section class="hero" id="hero">
+        <div class="container hero__grid">
+            <div>
+                <div class="hero__chips">
+                    <span class="chip">
+                        <svg aria-hidden="true" fill="none" height="14" stroke="currentColor" stroke-linecap="round"
+                            stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14">
+                            <rect height="14" rx="2" ry="2" width="20" x="2" y="3"></rect>
+                            <line x1="8" x2="16" y1="21" y2="21"></line>
+                            <line x1="12" x2="12" y1="17" y2="21"></line>
+                        </svg>
+                        Runs on your laptop
+                    </span>
+                    <span class="chip">
+                        <svg aria-hidden="true" fill="none" height="14" stroke="currentColor" stroke-linecap="round"
+                            stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14">
+                            <line x1="1" x2="23" y1="1" y2="23"></line>
+                            <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+                            <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+                            <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+                            <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+                            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                            <line x1="12" x2="12.01" y1="20" y2="20"></line>
+                        </svg>
+                        Works with Wi-Fi off
+                    </span>
+                    <span class="chip">
+                        <svg aria-hidden="true" fill="none" height="14" stroke="currentColor" stroke-linecap="round"
+                            stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14">
+                            <path
+                                d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83">
+                            </path>
+                        </svg>
+                        Gemma 4 E4B via Ollama
+                    </span>
+                    <span class="chip">
+                        <svg aria-hidden="true" fill="none" height="14" stroke="currentColor" stroke-linecap="round"
+                            stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14">
+                            <path
+                                d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22">
+                            </path>
+                        </svg>
+                        Open source (Apache-2.0)
+                    </span>
+                </div>
+                <h1>Kaagaz</h1>
+                <p class="hero__tagline">"Your documents, ready for any form. Offline."</p>
+                <p class="hero__desc">
+                    Kaagaz (Hindi: "paper") is a local, offline document assistant for Indian forms. Every scholarship,
+                    admission and exam portal wants the same documents in different formats ("photo 3.5 × 4.5 cm, JPG,
+                    20–50 KB", "marksheet PDF under 200 KB"). Kaagaz reads your folders, recognises each document with
+                    Gemma 4 E4B running locally through Ollama, and when you paste a portal's upload instructions it
+                    builds a folder of files converted, cropped, compressed and renamed to the exact rules, then
+                    re-opens and measures every output (PASS / WARN / FAIL with real numbers). It flags missing and
+                    expired documents before you start the form.
+                </p>
+                <div class="hero__actions">
+                    <a class="btn btn--primary" href="https://github.com/kashyapanand21/kaagaz"
+                        rel="noopener noreferrer" target="_blank">
+                        <svg aria-hidden="true" fill="currentColor" height="18" viewbox="0 0 24 24" width="18">
+                            <path
+                                d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z">
+                            </path>
+                        </svg>
+                        View on GitHub
+                    </a>
+                    <a class="btn btn--secondary" href="#setup">
+                        Set it up
+                    </a>
+                </div>
+            </div>
+            <!-- Tactile Sloth on Paper Stack Illustration -->
+            <div class="hero__mascot-card">
+                <svg aria-label="Chhotu the friendly sloth resting peacefully on an organized stack of archival papers"
+                    fill="none" height="240" role="img" viewbox="0 0 320 280" width="100%"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <filter height="130%" id="shadowPaper" width="120%" x="-10%" y="-10%">
+                            <fedropshadow dx="0" dy="4" flood-color="#0F4C5C" flood-opacity="0.08" stddeviation="6">
+                            </fedropshadow>
+                        </filter>
+                        <filter height="120%" id="slothShadow" width="120%" x="-10%" y="-10%">
+                            <fedropshadow dx="0" dy="5" flood-color="#0A3642" flood-opacity="0.12" stddeviation="5">
+                            </fedropshadow>
+                        </filter>
+                    </defs>
+                    <!-- Paper Stack 1 -->
+                    <rect fill="#E6DFD0" filter="url(#shadowPaper)" height="35" rx="8" width="230" x="45" y="195">
+                    </rect>
+                    <line stroke="#CFDCE3" stroke-linecap="round" stroke-width="3" x1="60" x2="160" y1="208" y2="208">
+                    </line>
+                    <line stroke="#CFDCE3" stroke-linecap="round" stroke-width="3" x1="60" x2="120" y1="218" y2="218">
+                    </line>
+                    <!-- Paper Stack 2 -->
+                    <rect fill="#FFFDF8" filter="url(#shadowPaper)" height="30" rx="8" stroke="#E6DFD0" width="245"
+                        x="35" y="175"></rect>
+                    <rect fill="#EAF5EE" height="14" rx="4" width="30" x="235" y="183"></rect>
+                    <text fill="#2E8B57" font-family="sans-serif" font-size="8" font-weight="700" x="240"
+                        y="193">PASS</text>
+                    <!-- Paper Stack 3 (Top sheet) -->
+                    <rect fill="#FFFDF8" filter="url(#shadowPaper)" height="32" rx="8" stroke="#E6DFD0" width="255"
+                        x="30" y="150"></rect>
+                    <line stroke="#5B6B70" stroke-linecap="round" stroke-width="2.5" x1="50" x2="180" y1="162" y2="162">
+                    </line>
+                    <line stroke="#CFDCE3" stroke-linecap="round" stroke-width="2" x1="50" x2="130" y1="172" y2="172">
+                    </line>
+                    <circle cx="260" cy="166" fill="#F2A541" r="6"></circle>
+                    <!-- Sloth Mascot Body -->
+                    <g filter="url(#slothShadow)">
+                        <ellipse cx="160" cy="115" fill="#0F4C5C" rx="45" ry="38"></ellipse>
+                        <!-- Face mask -->
+                        <ellipse cx="160" cy="115" fill="#FBF6EC" rx="30" ry="24"></ellipse>
+                        <!-- Eye patches -->
+                        <ellipse cx="147" cy="112" fill="#0A3642" rx="8" ry="11" transform="rotate(-15 147 112)">
+                        </ellipse>
+                        <ellipse cx="173" cy="112" fill="#0A3642" rx="8" ry="11" transform="rotate(15 173 112)">
+                        </ellipse>
+                        <!-- Closed sleepy contented eyes -->
+                        <path d="M142 113C144 116 150 116 152 113" stroke="#FFFDF8" stroke-linecap="round"
+                            stroke-width="2"></path>
+                        <path d="M168 113C170 116 176 116 178 113" stroke="#FFFDF8" stroke-linecap="round"
+                            stroke-width="2"></path>
+                        <!-- Snout & Nose -->
+                        <ellipse cx="160" cy="123" fill="#E3EFF1" rx="7" ry="5"></ellipse>
+                        <ellipse cx="160" cy="121" fill="#0A3642" rx="3.5" ry="2"></ellipse>
+                        <path d="M157 125C158.5 127 161.5 127 163 125" stroke="#0A3642" stroke-linecap="round"
+                            stroke-width="1.5"></path>
+                        <!-- Saffron Archivist Scarf -->
+                        <path d="M135 142C145 149 175 149 185 142L182 154C165 158 155 158 138 154Z" fill="#F2A541">
+                        </path>
+                        <path d="M140 148L136 166L148 164L148 150Z" fill="#D98A1F"></path>
+                        <!-- Gentle Paws holding papers -->
+                        <ellipse cx="120" cy="145" fill="#0F4C5C" rx="9" ry="14" transform="rotate(25 120 145)">
+                        </ellipse>
+                        <ellipse cx="200" cy="145" fill="#0F4C5C" rx="9" ry="14" transform="rotate(-25 200 145)">
+                        </ellipse>
+                        <circle cx="118" cy="154" fill="#E3EFF1" r="2"></circle>
+                        <circle cx="122" cy="155" fill="#E3EFF1" r="2"></circle>
+                        <circle cx="198" cy="155" fill="#E3EFF1" r="2"></circle>
+                        <circle cx="202" cy="154" fill="#E3EFF1" r="2"></circle>
+                    </g>
+                </svg>
+                <p class="hero__mascot-caption">Built for the DEV Hacktoberfest Open-Source AI Challenge, Week 3 ("Slow
+                    and Steady").</p>
+            </div>
+        </div>
+    </section>
+    <!-- 2. DEMO SECTION -->
+    <section id="demo">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-eyebrow">Demo</span>
+                <h2>See Kaagaz Build a Real Scholarship Packet</h2>
+                <p>Gemma 4 reads the portal's rules and labels your files. Plain Python picks, converts and measures
+                    every output. All on the laptop.</p>
+            </div>
+            <!-- VIDEO (turned off for now). To add a video later:
+     1. Upload it to YouTube and copy the ID after "watch?v=" in its URL.
+     2. Replace VIDEO_ID below with that ID.
+     3. Delete the first line of this comment (starts with VIDEO) and the last line (VIDEO END) so the block is live.
+<div class="demo-frame-wrapper card">
+<iframe allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen="" src="https://www.youtube-nocookie.com/embed/VIDEO_ID" title="Kaagaz demo video">
+</iframe>
+</div>
+VIDEO END -->
+            <!-- 4 screenshots: save them as docs/screenshots/library.png, review.png, match.png, build.png -->
+            <div class="screenshots-grid">
+                <div class="screenshot-card">
+                    <img alt="Kaagaz Library screen showing 4-column document cards and detail drawer"
+                        src="screenshots/library.png" loading="lazy" onerror="this.style.opacity=0" />
+                    <div class="screenshot-caption">
+                        1. Library &amp; Documents
+                        <small>Every document labelled by Gemma 4, with a validity badge.</small>
+                    </div>
+                </div>
+                <div class="screenshot-card">
+                    <img alt="Kaagaz Review Queue screen verifying low-confidence signature scan"
+                        src="screenshots/review.png" loading="lazy" onerror="this.style.opacity=0" />
+                    <div class="screenshot-caption">
+                        2. Review Queue
+                        <small>Unsure labels wait for a one-click check from you.</small>
+                    </div>
+                </div>
+                <div class="screenshot-card">
+                    <img alt="Kaagaz Match screen highlighting matched, expired and missing files"
+                        src="screenshots/match.png" loading="lazy" onerror="this.style.opacity=0" />
+                    <div class="screenshot-caption">
+                        3. Requirement Match
+                        <small>Flags 1 expired certificate and 1 missing passbook early.</small>
+                    </div>
+                </div>
+                <div class="screenshot-card">
+                    <img alt="Kaagaz Build Results screen showing PASS, WARN, and measured KB limits"
+                        src="screenshots/build.png" loading="lazy" onerror="this.style.opacity=0" />
+                    <div class="screenshot-caption">
+                        4. Measured Build Output
+                        <small>Every output re-opened and measured. A file that fails is never saved.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- 3. THE PROBLEM SECTION -->
+    <section id="the-problem">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-eyebrow">The Friction</span>
+                <h2>Every Indian Portal Has Strict, Arbitrary Document Rules</h2>
+                <p>Applying for scholarships, college admissions, and competitive exams usually means an agonizing maze
+                    of rejected uploads.</p>
+            </div>
+            <div class="problem-grid">
+                <!-- Problem Card 1 -->
+                <div class="card problem-card">
+                    <div class="problem-rule">Photo: 3.5 × 4.5 cm · JPG · 20–50 KB</div>
+                    <span class="pain-badge">The Pain: Rejected Uploads</span>
+                    <h3>Wrong aspect ratios &amp; blurry faces</h3>
+                    <p>Phone photos are several MB and the wrong shape. Shrinking them by hand usually ends up too
+                        blurry, too small in KB, or the wrong size in cm.</p>
+                </div>
+                <!-- Problem Card 2 -->
+                <div class="card problem-card">
+                    <div class="problem-rule">Marksheet: PDF ≤ 200 KB · Front + Back</div>
+                    <span class="pain-badge">The Pain: Privacy Risks</span>
+                    <h3>Shady online PDF compressors</h3>
+                    <p>To hit a KB limit, people upload marksheets and ID documents to random online compressors.</p>
+                </div>
+                <!-- Problem Card 3 -->
+                <div class="card problem-card">
+                    <div class="problem-rule">Income Certificate: Issued on/after 01 Apr 2026</div>
+                    <span class="pain-badge">The Pain: Deadlines Blown</span>
+                    <h3>Expired certificates discovered late</h3>
+                    <p>An income certificate issued before the form's cutoff date can slip through the upload and only
+                        get caught later, at document verification.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- 4. HOW IT WORKS SECTION -->
+    <section id="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-eyebrow">Workflow Architecture</span>
+                <h2>How Kaagaz Works</h2>
+                <p>Five steps. The AI decides what; plain code does the work and checks it.</p>
+            </div>
+            <!-- 5-Step Pipeline -->
+            <div class="steps-flow">
+                <div class="step-card">
+                    <div class="step-num">1</div>
+                    <h3>Scan</h3>
+                    <p>Read-only folder scan. Unmodified files indexed with SHA-256 caching to skip re-reading.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">2</div>
+                    <h3>Label</h3>
+                    <p>Gemma 4 returns schema-checked JSON. Ambiguous files route to an interactive review queue.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">3</div>
+                    <h3>Paste rules</h3>
+                    <p>Raw text from portal instructions is parsed offline into an editable checklist table.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">4</div>
+                    <h3>Build</h3>
+                    <p>Plain Python converts, crops, compresses and renames each file to the exact rules.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">5</div>
+                    <h3>Verify</h3>
+                    <p>Every output is re-opened and measured: format from its first bytes, KB, pixels, pages.</p>
+                </div>
+            </div>
+            <!-- The Principle Card -->
+            <div class="principle-banner">
+                <div class="principle-text">"AI decides what. Code does how. Code verifies."</div>
+                <p class="principle-sub">The language model extracts semantic intent and document classification. Pure
+                    deterministic Python controls sizing, compression, and file creation.</p>
+            </div>
+        </div>
+    </section>
+    <!-- 5. MEASURED, NOT CLAIMED SECTION -->
+    <section id="measured">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-eyebrow">Honest numbers</span>
+                <h2>Measured, Not Claimed</h2>
+                <p>Numbers from real runs on my laptop (RTX 4050 Laptop GPU, 6 GB).</p>
+            </div>
+            <div class="table-container">
+                <table class="measured-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Measurement Metric</th>
+                            <th scope="col">Observed Value / Verification</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>GPU memory during a vision call</strong></td>
+                            <td><span class="metric-value">4.5 GB of 6 GB (RTX 4050 Laptop)</span></td>
+                            <td><span class="status-badge status-badge--pass">Measured</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Time per document (warm)</strong></td>
+                            <td><span class="metric-value">median 2.1 s, p95 3.0 s</span></td>
+                            <td><span class="status-badge status-badge--pass">Measured</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Building a 6-file packet</strong></td>
+                            <td><span class="metric-value">0.3 s</span></td>
+                            <td><span class="status-badge status-badge--pass">Measured</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Requirement parser on the specimen rules text</strong></td>
+                            <td><span class="metric-value">27 / 27 limits (v1 was 22 / 27)</span></td>
+                            <td><span class="status-badge status-badge--pass">Smoke test</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Dev set (13 specimen documents)</strong></td>
+                            <td><span class="metric-value">13 / 13 handled correctly (11 labelled, 2 sent to
+                                    review)</span></td>
+                            <td><span class="status-badge status-badge--pass">Smoke test</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="honesty-note">
+                <svg aria-hidden="true" fill="none" height="18" stroke="currentColor" stroke-linecap="round"
+                    stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="18">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" x2="12" y1="16" y2="12"></line>
+                    <line x1="12" x2="12.01" y1="8" y2="8"></line>
+                </svg>
+                Specimen and dev-set numbers come from documents I made myself, so they are a smoke test, not a
+                benchmark.
+            </p>
+        </div>
+    </section>
+    <!-- 6. PRIVACY CARD SECTION -->
+    <section id="privacy">
+        <div class="container">
+            <div class="card card--teal privacy-card">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <svg aria-hidden="true" fill="none" height="28" stroke="#F2A541" stroke-linecap="round"
+                        stroke-linejoin="round" stroke-width="2.2" viewbox="0 0 24 24" width="28">
+                        <rect height="11" rx="2" ry="2" width="18" x="3" y="11"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <span
+                        style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--marigold);">Privacy</span>
+                </div>
+                <h2>Your documents stay on your laptop</h2>
+                <p style="font-size: 1.05rem; max-width: 800px;">
+                    Kaagaz only talks to the AI model running on your own machine. It never uploads anything.
+                </p>
+                <div class="privacy-grid">
+                    <div class="privacy-point">
+                        <svg aria-hidden="true" fill="none" height="22" stroke="#2E8B57" stroke-linecap="round"
+                            stroke-linejoin="round" stroke-width="2.5" viewbox="0 0 24 24" width="22">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <div>
+                            <h4>Only connection: 127.0.0.1:11434</h4>
+                            <p>The only network connection is to Ollama on this laptop. If the model host is set to
+                                anything else, Kaagaz refuses to start.</p>
+                        </div>
+                    </div>
+                    <div class="privacy-point">
+                        <svg aria-hidden="true" fill="none" height="22" stroke="#2E8B57" stroke-linecap="round"
+                            stroke-linejoin="round" stroke-width="2.5" viewbox="0 0 24 24" width="22">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <div>
+                            <h4>No usage statistics</h4>
+                            <p>Kaagaz has no analytics code, and Streamlit's own usage statistics are turned off. The
+                                app only listens on 127.0.0.1.</p>
+                        </div>
+                    </div>
+                    <div class="privacy-point">
+                        <svg aria-hidden="true" fill="none" height="22" stroke="#2E8B57" stroke-linecap="round"
+                            stroke-linejoin="round" stroke-width="2.5" viewbox="0 0 24 24" width="22">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <div>
+                            <h4>Last 4 Digits Only For IDs</h4>
+                            <p>Aadhaar, PAN and account numbers are kept as the last 4 digits only (e.g. XXXX 9012). A
+                                scrubber masks them in every saved field.</p>
+                        </div>
+                    </div>
+                    <div class="privacy-point">
+                        <svg aria-hidden="true" fill="none" height="22" stroke="#2E8B57" stroke-linecap="round"
+                            stroke-linejoin="round" stroke-width="2.5" viewbox="0 0 24 24" width="22">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <div>
+                            <h4>Original Files Are Read-Only</h4>
+                            <p>Kaagaz never changes, moves or deletes your files. Outputs go to a separate Packets
+                                folder.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- 7. SET IT UP (GUIDE) SECTION -->
+    <section id="setup">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-eyebrow">Quickstart</span>
+                <h2>Set It Up on Your Laptop</h2>
+                <p>Everything runs natively in Windows PowerShell. Follow these prerequisites and steps.</p>
+            </div>
+            <div class="setup-grid">
+                <!-- Requirements Card -->
+                <div class="card">
+                    <h3>System Requirements</h3>
+                    <ul class="req-list">
+                        <li>
+                            <svg aria-hidden="true" fill="none" height="18" stroke="currentColor" stroke-linecap="round"
+                                stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="18">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            <span><strong>OS:</strong> Windows 11</span>
+                        </li>
+                        <li>
+                            <svg aria-hidden="true" fill="none" height="18" stroke="currentColor" stroke-linecap="round"
+                                stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="18">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            <span><strong>GPU:</strong> NVIDIA GPU 6 GB+ VRAM with current driver</span>
+                        </li>
+                        <li>
+                            <svg aria-hidden="true" fill="none" height="18" stroke="currentColor" stroke-linecap="round"
+                                stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="18">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            <span><strong>Runtime:</strong> Python 3.12</span>
+                        </li>
+                        <li>
+                            <svg aria-hidden="true" fill="none" height="18" stroke="currentColor" stroke-linecap="round"
+                                stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="18">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            <span><strong>Model Host:</strong> Ollama installed &amp; running</span>
+                        </li>
+                    </ul>
+                    <div class="tip-callout">
+                        <strong>Important Tip:</strong> Your PowerShell terminal prompt must start with
+                        <code>(.venv)</code> before executing any <code>kaagaz</code> commands.
+                    </div>
+                </div>
+                <!-- Numbered Installation Commands -->
+                <div>
+                    <!-- Step 1 -->
+                    <div class="code-step">
+                        <div class="code-header">
+                            <span class="code-title">1. Pull the Gemma 4 vision model in Ollama</span>
+                            <button class="copy-btn" onclick="copyCode(this, 'ollama pull gemma4:e4b')">Copy</button>
+                        </div>
+                        <pre class="code-box"><code>ollama pull gemma4:e4b</code></pre>
+                    </div>
+                    <!-- Step 2 -->
+                    <div class="code-step">
+                        <div class="code-header">
+                            <span class="code-title">2. Clone Kaagaz repository</span>
+                            <button class="copy-btn"
+                                onclick="copyCode(this, 'git clone https://github.com/kashyapanand21/kaagaz.git\ncd kaagaz')">Copy</button>
+                        </div>
+                        <pre class="code-box"><code>git clone https://github.com/kashyapanand21/kaagaz.git
+cd kaagaz</code></pre>
+                    </div>
+                    <!-- Step 3 -->
+                    <div class="code-step">
+                        <div class="code-header">
+                            <span class="code-title">3. Create and activate virtual environment</span>
+                            <button class="copy-btn"
+                                onclick="copyCode(this, 'py -3.12 -m venv .venv\n.venv\\Scripts\\Activate.ps1')">Copy</button>
+                        </div>
+                        <pre class="code-box"><code>py -3.12 -m venv .venv
+.venv\Scripts\Activate.ps1</code></pre>
+                    </div>
+                    <!-- Step 4 -->
+                    <div class="code-step">
+                        <div class="code-header">
+                            <span class="code-title">4. Install Kaagaz package</span>
+                            <button class="copy-btn"
+                                onclick="copyCode(this, 'pip install -e &quot;.[ui,dev]&quot;')">Copy</button>
+                        </div>
+                        <pre class="code-box"><code>pip install -e ".[ui,dev]"</code></pre>
+                    </div>
+                    <!-- Step 5 -->
+                    <div class="code-step">
+                        <div class="code-header">
+                            <span class="code-title">5. Run system diagnostics &amp; launch UI</span>
+                            <button class="copy-btn" onclick="copyCode(this, 'kaagaz doctor\nkaagaz ui')">Copy</button>
+                        </div>
+                        <pre class="code-box"><code>kaagaz doctor
+kaagaz ui</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- 8. HOW TO USE (GUIDE) SECTION -->
+    <section id="guide">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-eyebrow">User Guide</span>
+                <h2>How to Use Kaagaz</h2>
+                <p>Six screens. Here's what each one is for.</p>
+            </div>
+            <!-- Six Illustrated Cards -->
+            <div class="guide-grid">
+                <div class="card guide-card">
+                    <span class="guide-badge">Onboarding</span>
+                    <h3>1. First Run</h3>
+                    <p>Check the local AI status, select your monitored folders (e.g. Scans, WhatsApp downloads), input
+                        your candidate name and roll number, then click <strong>Start</strong>.</p>
+                </div>
+                <div class="card guide-card">
+                    <span class="guide-badge">Archive</span>
+                    <h3>2. Library</h3>
+                    <p>Scan and index your documents. Search by name like <em>"12th marksheet"</em>, apply filters, and
+                        open any card to see what Gemma read and how sure it was.</p>
+                </div>
+                <div class="card guide-card">
+                    <span class="guide-badge">Verification</span>
+                    <h3>3. Review Queue</h3>
+                    <p>Quickly confirm or fix low-confidence labels with speedy keyboard shortcuts:
+                        <code>Ctrl+Enter</code> to confirm label or <code>Ctrl+→</code> to skip.</p>
+                </div>
+                <div class="card guide-card">
+                    <span class="guide-badge">Core Engine</span>
+                    <h3>4. New Packet</h3>
+                    <p>Four-step guided pipeline: <strong>Paste</strong> portal instructions →
+                        <strong>Checklist</strong> review → <strong>Match</strong> files against rules →
+                        <strong>Build</strong> verified outputs.</p>
+                </div>
+                <div class="card guide-card">
+                    <span class="guide-badge">History</span>
+                    <h3>5. Packets</h3>
+                    <p>Every packet you've built (e.g. NSP Scholarship 2026). Open its folder, or rebuild it with
+                        today's library.</p>
+                </div>
+                <div class="card guide-card">
+                    <span class="guide-badge">Sovereignty</span>
+                    <h3>6. Settings &amp; Privacy</h3>
+                    <p>Choose folders, set your name and roll number, check the local model, or delete all of Kaagaz's
+                        own data.</p>
+                </div>
+            </div>
+            <!-- Collapsible Command Line Box -->
+            <details class="cli-box">
+                <summary>
+                    <span>Command Line Interface (CLI Commands)</span>
+                    <span
+                        style="font-size: 0.85rem; font-family: var(--font-sans); font-weight: normal; color: var(--text-muted);">Expand
+                        to view headless terminal tools</span>
+                </summary>
+                <div class="cli-content">
+                    <p>Everything the app does is also a command:</p>
+                    <div class="code-box">
+                        kaagaz scan
+                        kaagaz classify
+                        kaagaz parse FILE --save x.json
+                        kaagaz match x.json
+                        kaagaz build x.json --name "NSP 2026"
+                    </div>
+                </div>
+            </details>
+        </div>
+    </section>
+    <!-- 9. TROUBLESHOOTING SECTION -->
+    <section id="troubleshooting">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-eyebrow">Diagnose</span>
+                <h2>Troubleshooting &amp; Known Issues</h2>
+                <p>Fast fixes for common local runtime and configuration hurdles.</p>
+            </div>
+            <div class="accordion-group">
+                <details class="acc-item">
+                    <summary><code>kaagaz is not recognized as an internal or external command</code></summary>
+                    <div class="acc-body">
+                        You must activate the Python virtual environment in your active PowerShell window first.
+                        Run:<br />
+                        <code>.venv\Scripts\Activate.ps1</code><br />
+                        Verify that your command prompt begins with <code>(.venv)</code> before re-running
+                        <code>kaagaz</code>.
+                    </div>
+                </details>
+                <details class="acc-item">
+                    <summary>"The local AI isn't running"</summary>
+                    <div class="acc-body">
+                        Start the desktop Ollama application or start the daemon from your terminal. Ensure the Gemma 4
+                        vision model has finished downloading by running:<br />
+                        <code>ollama pull gemma4:e4b</code>
+                    </div>
+                </details>
+                <details class="acc-item">
+                    <summary>Is Kaagaz really running on the GPU?</summary>
+                    <div class="acc-body">
+                        Open a PowerShell window while Kaagaz is processing a document and run:<br />
+                        <code>ollama ps</code><br />
+                        The terminal output should explicitly state <strong>100% GPU</strong> offload.
+                    </div>
+                </details>
+                <details class="acc-item">
+                    <summary>OneDrive files are being skipped</summary>
+                    <div class="acc-body">
+                        Cloud-only placeholder files (Files On-Demand) cannot be read while offline. In Windows File
+                        Explorer, right-click your monitored documents folder and choose <strong>"Always keep on this
+                            device"</strong>.
+                    </div>
+                </details>
+                <details class="acc-item">
+                    <summary>Model fails to load with "CUDA error: shared object initialization failed"</summary>
+                    <div class="acc-body">
+                        Ollama's model runner crashed while loading Gemma on my RTX 4050 after Ollama auto-updated
+                        (0.40.11, CUDA 13 backend). Kaagaz retries 3 times, then pauses without losing work. Workaround:
+                        quit Ollama from the system tray, run <code>setx OLLAMA_LLM_LIBRARY cuda_v12</code>, start
+                        Ollama again and open a new terminal. If that doesn't help, reinstall an earlier Ollama release.
+                    </div>
+                </details>
+            </div>
+        </div>
+    </section>
+    <!-- 10. LIMITATIONS & NEXT SECTION -->
+    <section id="limitations">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-eyebrow">Roadmap</span>
+                <h2>Honest Limitations &amp; Next Steps</h2>
+                <p>What Kaagaz does not yet do. No overpromising—clear, factual transparency.</p>
+            </div>
+            <div class="limitations-grid">
+                <div class="card limitation-item">
+                    <svg aria-hidden="true" class="limitation-icon" fill="none" stroke="currentColor"
+                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" x2="12" y1="8" y2="12"></line>
+                        <line x1="12" x2="12.01" y1="16" y2="16"></line>
+                    </svg>
+                    <div>
+                        <h3>Hindi Name Transliteration</h3>
+                        <p>Hindi names on certificates (e.g. रिया शर्मा) do not yet automatically cross-match against an
+                            English profile name (Riya Sharma). For now Kaagaz shows a “name differs” note instead.</p>
+                    </div>
+                </div>
+                <div class="card limitation-item">
+                    <svg aria-hidden="true" class="limitation-icon" fill="none" stroke="currentColor"
+                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" x2="12" y1="8" y2="12"></line>
+                        <line x1="12" x2="12.01" y1="16" y2="16"></line>
+                    </svg>
+                    <div>
+                        <h3>Photo Background Verification</h3>
+                        <p>Photo backgrounds are strictly checked for compliance (e.g. verifying white backdrop), but
+                            are not replaced. Retake the photo if the check fails.</p>
+                    </div>
+                </div>
+                <div class="card limitation-item">
+                    <svg aria-hidden="true" class="limitation-icon" fill="none" stroke="currentColor"
+                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" x2="12" y1="8" y2="12"></line>
+                        <line x1="12" x2="12.01" y1="16" y2="16"></line>
+                    </svg>
+                    <div>
+                        <h3>Front &amp; Back Photo Stitching</h3>
+                        <p>Separate phone photos of the front and back of ID cards or marksheets are not merged into a
+                            single multi-page PDF automatically yet. For now, combine them into one PDF before scanning.
+                        </p>
+                    </div>
+                </div>
+                <div class="card limitation-item">
+                    <svg aria-hidden="true" class="limitation-icon" fill="none" stroke="currentColor"
+                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" x2="12" y1="8" y2="12"></line>
+                        <line x1="12" x2="12.01" y1="16" y2="16"></line>
+                    </svg>
+                    <div>
+                        <h3>Windows-First Support</h3>
+                        <p>The initial release is tuned and tested specifically for Windows 11 with NVIDIA hardware.
+                            macOS and Linux are untested.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- 11. FAQ SECTION -->
+    <section id="faq">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-eyebrow">Questions &amp; Answers</span>
+                <h2>Frequently Asked Questions</h2>
+            </div>
+            <div class="accordion-group">
+                <details class="acc-item">
+                    <summary>Does Kaagaz upload my documents to any server?</summary>
+                    <div class="acc-body">
+                        <strong>No.</strong> Nothing leaves your laptop. Kaagaz never uploads anything; you upload the
+                        final prepared files to the respective government or academic portal yourself.
+                    </div>
+                </details>
+                <details class="acc-item">
+                    <summary>Do I need an active internet connection?</summary>
+                    <div class="acc-body">
+                        Only during initial installation to download Ollama, the model weights, and Python packages.
+                        Once setup is complete, Kaagaz works completely with Wi-Fi switched off.
+                    </div>
+                </details>
+                <details class="acc-item">
+                    <summary>Which document types does Kaagaz recognize?</summary>
+                    <div class="acc-body">
+                        Kaagaz recognizes <strong>28 standard document types</strong> commonly requested in Indian
+                        portals, including secondary marksheets, caste &amp; income certificates, domicile papers, bank
+                        passbooks, passport photographs and signatures. Anything else is labelled “other” and sent to
+                        review.
+                    </div>
+                </details>
+                <details class="acc-item">
+                    <summary>Can I edit the extracted checklist rules?</summary>
+                    <div class="acc-body">
+                        <strong>Yes.</strong> Every single cell in the generated checklist table (file size bounds,
+                        allowed extensions, dimensions, naming tokens) is completely editable before matching and
+                        building.
+                    </div>
+                </details>
+            </div>
+        </div>
+    </section>
+    <!-- 12. FOOTER -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div>
+                    <div class="footer-brand">
+                        <svg aria-hidden="true" fill="none" height="24" viewbox="0 0 36 36" width="24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="18" cy="18" fill="#FBF6EC" r="17"></circle>
+                            <ellipse cx="18" cy="19" fill="#0A3642" rx="6" ry="4.5"></ellipse>
+                            <rect fill="#F2A541" height="4" rx="2" width="20" x="8" y="24"></rect>
+                        </svg>
+                        <span>Kaagaz</span>
+                    </div>
+                    <p style="color: #D6E7EB; max-width: 520px; font-size: 0.95rem;">
+                        Open source · Apache-2.0 · Built for DEV Hacktoberfest 2026 Week 3 ("Slow and Steady").
+                    </p>
+                    <div class="credits-tag-cloud">
+                        <span class="credit-tag">Gemma 4 (Google)</span>
+                        <span class="credit-tag">Ollama</span>
+                        <span class="credit-tag">PyMuPDF</span>
+                        <span class="credit-tag">Pillow</span>
+                        <span class="credit-tag">OpenCV</span>
+                        <span class="credit-tag">Pydantic</span>
+                        <span class="credit-tag">Typer</span>
+                        <span class="credit-tag">Streamlit</span>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="color: #FFFDF8; margin-bottom: 0.75rem; font-family: var(--font-serif);">Project Links
+                    </h4>
+                    <ul
+                        style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.95rem;">
+                        <li><a href="https://github.com/kashyapanand21/kaagaz" rel="noopener noreferrer"
+                                style="color: #F2A541;" target="_blank">GitHub Repository</a></li>
+                        <li><a href="#setup" style="color: #D6E7EB;">Installation Guide</a></li>
+                        <li><a href="#privacy" style="color: #D6E7EB;">Privacy</a></li>
+                        <li><a href="#measured" style="color: #D6E7EB;">Measured results</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <div>Note: All demo documents are specimens with invented details (Riya Sharma, Roll 12345). No real
+                    logos, seals, Aadhaar layouts or ID numbers.</div>
+                <div>Kaagaz guide · Apache License 2.0</div>
+            </div>
+        </div>
+    </footer>
+    <!-- Vanilla JavaScript for Copy to Clipboard and Scroll Highlighting -->
+    <script>
+        // Copy code snippet to clipboard with tactile feedback
+        function copyCode(button, text) {
+            if (!navigator.clipboard) {
+                fallbackCopyTextToClipboard(text, button);
+                return;
+            }
+            navigator.clipboard.writeText(text).then(function () {
+                setCopiedState(button);
+            }, function () {
+                fallbackCopyTextToClipboard(text, button);
+            });
+        }
+
+        function fallbackCopyTextToClipboard(text, button) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.opacity = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                setCopiedState(button);
+            } catch (err) {
+                console.error('Fallback copy failed', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function setCopiedState(button) {
+            const originalText = button.textContent;
+            button.textContent = "Copied!";
+            button.classList.add("copied");
+            setTimeout(function () {
+                button.textContent = originalText;
+                button.classList.remove("copied");
+            }, 2000);
+        }
+
+        // Active Section Highlight on Scroll for Sticky Navigation
+        document.addEventListener('DOMContentLoaded', function () {
+            const sections = document.querySelectorAll('section[id]');
+            const navLinks = document.querySelectorAll('.nav-links a');
+
+            function updateActiveNav() {
+                let currentSectionId = '';
+                const scrollPosition = window.scrollY + 120;
+
+                sections.forEach(function (section) {
+                    const sectionTop = section.offsetTop;
+                    const sectionHeight = section.offsetHeight;
+                    if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+                        currentSectionId = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach(function (link) {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === '#' + currentSectionId) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+
+            window.addEventListener('scroll', updateActiveNav, { passive: true });
+            updateActiveNav();
+        });
+    </script>
+</body>
+
+</html>

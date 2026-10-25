@@ -18,6 +18,12 @@ _NETWORK_ERRORS = (ConnectionError, httpx.ConnectError, httpx.TimeoutException)
 class OllamaUnavailable(RuntimeError):
     """Ollama isn't running or the model isn't pulled. Pause work; don't fail documents."""
 
+    def __init__(self, message: str, detail: str = "") -> None:
+        super().__init__(message)
+        self.detail = detail
+
+
+RETRY_WAITS = (3, 8)      
 
 @dataclass
 class CallInfo:
@@ -36,7 +42,7 @@ def _client() -> ollama.Client:
 
 def chat_json(schema: type[T], system: str, prompt: str,
               images: list[bytes] | None = None,
-              model: str | None = None, _retry: bool = True) -> tuple[T | None, CallInfo]:
+              model: str | None = None, _attempt: int = 0) -> tuple[T | None, CallInfo]:
     m = get_settings().models
     model = model or m.vision
     user: dict = {"role": "user", "content": prompt}
@@ -59,10 +65,12 @@ def chat_json(schema: type[T], system: str, prompt: str,
         if e.status_code == 404:
             raise OllamaUnavailable(f"Model {model!r} isn't pulled. Run: ollama pull {model}") from e
         if e.status_code >= 500 or e.status_code < 0:      # the server/runner failed, not the document
-            if _retry:
-                time.sleep(2)                                # the next call restarts the runner
-                return chat_json(schema, system, prompt, images, model, _retry=False)
-            raise OllamaUnavailable(f"Ollama failed twice in a row: {str(e.error)[:200]}") from e
+            if _attempt < len(RETRY_WAITS):
+                time.sleep(RETRY_WAITS[_attempt])
+                return chat_json(schema, system, prompt, images, model, _attempt + 1)
+            raise OllamaUnavailable(
+                f"The local AI crashed while loading {model} ({_attempt + 1} tries). "
+                "Restart the Ollama app and try again.", detail=str(e.error)) from e
         return None, CallInfo(model, time.perf_counter() - t0, error=f"ollama error: {e.error}")
     info = CallInfo(model, time.perf_counter() - t0,
                     resp.prompt_eval_count or 0, resp.eval_count or 0,

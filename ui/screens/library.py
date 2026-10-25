@@ -8,8 +8,8 @@ import streamlit as st
 
 import jobs
 import store
-from uikit import (EMOJI, GROUPS, badge, banner, esc, group_of, hero, kb, nice, open_path,
-                   preview_html, reveal, thumb_html)
+from uikit import (EMOJI, GROUPS, badge, banner, esc, group_of, hero, kb, nice, open_path, plural,
+                                      preview_html, reveal, thumb_html)
 
 PAGE = 24
 ALL_TYPES = [t for ts in GROUPS.values() for t in ts]
@@ -25,7 +25,7 @@ def render() -> None:
         with left:
             hero("The sloth reads your folders, slowly and privately.",
                  "Gemma 4 runs on this laptop. Works with Wi-Fi off. "
-                 f"{'<b>' + str(pending) + ' new files</b> waiting to be read.' if pending else 'Everything found so far is read.'}")
+                 f"{'<b>' + plural(pending, 'new file') + '</b> waiting to be read.' if pending else 'Everything found so far is read.'}")
         with right:
             a, b = st.columns(2)
             scan = a.button("Scan folders", icon=":material/search:", width="stretch", key="lib_scan",

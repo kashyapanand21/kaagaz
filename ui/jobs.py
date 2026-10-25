@@ -8,8 +8,7 @@ from pathlib import Path
 import streamlit as st
 
 import store
-from uikit import banner, esc, nice
-
+from uikit import banner, esc, nice, plural
 
 def run_scan(show: bool = True):
     from kaagaz.scan import scan
@@ -59,18 +58,20 @@ def run_label(limit: int | None = None) -> dict:
                               unsafe_allow_html=True)
         except OllamaUnavailable as e:
             result["paused"] = str(e)
+            result["detail"] = getattr(e, "detail", "")
     st.cache_data.clear()
     if result["paused"]:
-        banner(f"Paused: {esc(result['paused'])} Nothing is lost; the rest stays queued.", "bad")
+        banner(f"<b>Paused.</b> {esc(result['paused'])} Nothing is lost; the rest stays queued.", "bad")
+        if result.get("detail"):
+            with st.expander("Technical details"):
+                st.code(result["detail"], language=None)
     else:
         t = sorted(result["times"])
         p50 = f" · median {t[len(t) // 2]:.1f} s per document" if t else ""
-        banner(f"Read {result['done']} documents: <b>{result['indexed']} labelled</b>, "
+        banner(f"Read {plural(result['done'], 'document')}: <b>{result['indexed']} labelled</b>, "
                f"{result['review']} sent to review, {result['failed']} unreadable{p50}.", "ok")
     return result
 
-
-# ── Packet build helpers ─────────────────────────────────────────────────────
 _ROW = {"ok": "matched", "check_date": "check_date", "expired": "expired"}
 
 

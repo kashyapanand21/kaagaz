@@ -185,3 +185,17 @@ def build(path: Path,
     typer.echo(f"{ready} of {len(rows)} ready in {time.perf_counter() - t0:.1f}s -> {out_dir}")
     if open_folder:
         os.startfile(out_dir)
+
+
+
+
+@app.command()
+def ui() -> None:
+    """Open the Kaagaz app in your browser (local only, offline)."""
+    import subprocess
+    import sys
+
+    app_path = Path(__file__).resolve().parents[2] / "ui" / "app.py"
+    raise typer.Exit(subprocess.call([sys.executable, "-m", "streamlit", "run", str(app_path),
+                                      "--server.address", "127.0.0.1",
+                                      "--browser.gatherUsageStats", "false"]))
